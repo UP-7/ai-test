@@ -12,7 +12,7 @@ export default function HomePage() {
         onFinish: () => {
             setInput('');
         }
-    });
+    })
 
     // 自动滚动到底部
     useEffect(() => {
@@ -82,52 +82,44 @@ export default function HomePage() {
                                                     getWeather: '天气查询',
                                                     calculator: '数学计算',
                                                     search: '联网搜索',
+                                                    terminal: '执行命令',
+                                                    readFile: '读取文件',
+                                                    writeFile: '写入文件',
+                                                    listFiles: '列出文件',
                                                     gitStatus: 'Git 状态',
                                                     gitDiff: '查看变更',
                                                     gitLog: '提交记录',
-                                                    gitBranch: '当前分支',
+                                                    gitBranch: '查看分支',
                                                     gitNewBranch: '新建分支',
                                                     gitAdd: '暂存文件',
                                                     gitCommit: '提交代码',
-                                                    gitPush: '推送远程',
+                                                    gitPush: '推送到远程',
                                                 };
                                                 const displayName = toolNameMap[toolName] || toolName;
-
-                                                if (invocation.state === 'input-available' || invocation.state === 'input-streaming') {
-                                                    return (
-                                                        <div key={message.id + '-tool-' + index} className="text-xs text-purple-600 bg-purple-50 rounded-lg px-3 py-1.5 mb-1">
-                                                            🔧 正在调用 {displayName}...
-                                                        </div>
-                                                    );
-                                                }
-                                                if (invocation.state === 'output-available') {
-                                                    return (
-                                                        <div key={message.id + '-tool-' + index} className="text-xs text-green-600 bg-green-50 rounded-lg px-3 py-1.5 mb-1">
-                                                            ✅ {displayName} 完成
-                                                        </div>
-                                                    );
-                                                }
-                                                if (invocation.state === 'output-error') {
-                                                    return (
-                                                        <div key={message.id + '-tool-' + index} className="text-xs text-red-600 bg-red-50 rounded-lg px-3 py-1.5 mb-1">
-                                                            ❌ {displayName} 失败
-                                                        </div>
-                                                    );
-                                                }
-                                                return null;
+                                                const stateMap: Record<string, { text: string; color: string }> = {
+                                                    result: { text: '✅ 完成', color: 'text-green-600' },
+                                                    'input-available': { text: '⏳ 执行中…', color: 'text-blue-600' },
+                                                    'output-available': { text: '📤 返回结果', color: 'text-purple-600' },
+                                                };
+                                                const s = stateMap[invocation.state] || { text: invocation.state, color: 'text-gray-500' };
+                                                return (
+                                                    <div key={index} className={`text-xs ${s.color} mb-1`}>
+                                                        {s.text} {displayName}
+                                                    </div>
+                                                );
                                             })}
-                                        {/* 文本内容 */}
-                                        <div className={`rounded-2xl px-4 py-3 shadow-sm ${
-                                            message.role === 'user'
-                                                ? 'bg-linear-to-br from-blue-500 to-blue-600 text-white'
-                                                : 'bg-white border border-gray-200 text-gray-800'
-                                        }`}>
+                                        
+                                        <div
+                                            className={`rounded-2xl px-4 py-2.5 text-sm leading-relaxed ${
+                                                message.role === 'user'
+                                                    ? 'bg-blue-600 text-white'
+                                                    : 'bg-white shadow-sm border border-gray-100 text-gray-700'
+                                            }`}
+                                        >
                                             {message.parts
                                                 .filter((part) => part.type === 'text')
                                                 .map((part, index) => (
-                                                    <div key={message.id + index} className='whitespace-pre-wrap wrap-break-word'>
-                                                        {(part as { text: string }).text}
-                                                    </div>
+                                                    <span key={index}>{(part as { text: string }).text}</span>
                                                 ))}
                                         </div>
                                     </div>
@@ -140,18 +132,17 @@ export default function HomePage() {
             </div>
 
             {/* 输入区域 */}
-            <div className='bg-white/80 backdrop-blur-sm border-t border-gray-200 shadow-lg'>
-                <div className='max-w-4xl mx-auto px-4 py-4'>
-                    <div className='flex gap-3 items-end'>
-                        <div className='flex-1 relative'>
-                            <Textarea
-                                value={input}
-                                onChange={(e) => setInput(e.target.value)}
-                                onKeyDown={handleKeyDown}
-                                placeholder='请输入你的问题... (按 Enter 发送，Shift + Enter 换行)'
-                                className='min-h-[60px] max-h-[200px] resize-none rounded-xl border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all shadow-sm'
-                            />
-                        </div>
+            <div className='bg-white/80 backdrop-blur-sm border-t border-gray-200'>
+                <div className='max-w-4xl mx-auto px-6 py-4'>
+                    <div className='flex gap-3'>
+                        <Textarea
+                            value={input}
+                            onChange={(e) => setInput(e.target.value)}
+                            onKeyDown={handleKeyDown}
+                            placeholder='输入消息… (Enter 发送，Shift+Enter 换行)'
+                            className='min-h-[52px] resize-none rounded-xl border-gray-200 focus:border-blue-400 focus:ring-blue-400'
+                            rows={1}
+                        />
                         <Button
                             onClick={() => {
                                 if (input.trim()) {
@@ -159,11 +150,9 @@ export default function HomePage() {
                                 }
                             }}
                             disabled={!input.trim()}
-                            className='h-[60px] px-6 rounded-xl bg-linear-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 transition-all shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed'
+                            className='bg-linear-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white rounded-xl px-6'
                         >
-                            <svg className='w-5 h-5' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
-                                <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M12 19l9 2-9-18-9 18 9-2zm0 0v-8' />
-                            </svg>
+                            发送
                         </Button>
                     </div>
                 </div>
