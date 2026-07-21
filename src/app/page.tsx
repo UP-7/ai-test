@@ -86,6 +86,7 @@ export default function HomePage() {
                                                     gitDiff: '查看变更',
                                                     gitLog: '提交记录',
                                                     gitBranch: '当前分支',
+                                                    gitNewBranch: '新建分支',
                                                     gitAdd: '暂存文件',
                                                     gitCommit: '提交代码',
                                                     gitPush: '推送远程',

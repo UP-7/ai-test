@@ -68,6 +68,7 @@ export const gitBranchTool: any = tool({
     },
 });
 
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const gitAddTool: any = tool({
     description: "将文件添加到 Git 暂存区（git add）。",
@@ -112,6 +113,22 @@ export const gitPushTool: any = tool({
     },
 });
 
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const gitNewBranchTool: any = tool({
+    description: "创建并切换到新分支（git checkout -b）。",
+    parameters: z.object({
+        name: z.string().describe("分支名，建议用英文，如 feat/weather-tool"),
+    }),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    execute: async (input: any) => {
+        const name = (input.name || "").replace(/[^a-zA-Z0-9_\-./]/g, ""); // 过滤非法字符
+        if (!name) return { error: "分支名不能为空" };
+        const output = runGit(`checkout -b ${name}`);
+        return { result: output || `已创建并切换到分支: ${name}` };
+    },
+});
+
 // 导出所有 git 工具
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const gitTools: Record<string, any> = {
@@ -119,6 +136,7 @@ export const gitTools: Record<string, any> = {
     gitDiff: gitDiffTool,
     gitLog: gitLogTool,
     gitBranch: gitBranchTool,
+    gitNewBranch: gitNewBranchTool,
     gitAdd: gitAddTool,
     gitCommit: gitCommitTool,
     gitPush: gitPushTool,
