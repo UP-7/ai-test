@@ -86,6 +86,8 @@ export default function HomePage() {
                                                     readFile: '读取文件',
                                                     writeFile: '写入文件',
                                                     listFiles: '列出文件',
+                                                    remember: '记忆存储',
+                                                    recall: '回忆信息',
                                                     gitStatus: 'Git 状态',
                                                     gitDiff: '查看变更',
                                                     gitLog: '提交记录',

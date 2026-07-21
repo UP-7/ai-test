@@ -6,6 +6,8 @@ import { searchTool } from "@/lib/tools/search";
 import { gitTools } from "@/lib/tools/git";
 import { terminalTool } from "@/lib/tools/terminal";
 import { fileTools } from "@/lib/tools/file";
+import { memoryTools } from "@/lib/tools/memory";
+import { memoryContext } from "@/lib/memory";
 
 // ========== LLM 配置 ==========
 
@@ -24,6 +26,7 @@ const tools: Record<string, any> = {
     caculator: caculatorTool,
     search: searchTool,
     terminal: terminalTool,
+    ...memoryTools,
     ...fileTools,
     ...gitTools,
 };
@@ -40,6 +43,9 @@ export const POST = async (req: Request) => {
 
         const modelMessages = await convertToModelMessages(messages);
 
+        // 注入长期记忆
+        const memory = memoryContext();
+
         const result = streamText({
             model: deepseek.chat(MODEL),
             system: `你是一个 AI 助手，帮助用户完成开发任务。
@@ -47,29 +53,28 @@ export const POST = async (req: Request) => {
 你有以下工具：
 【信息查询】
 - getWeather(city) - 查询天气
-- calculator(expression) - 数学计算
+- caculator(expression) - 数学计算
 - search(query) - 联网搜索
-- terminal(command) - 执行终端命令（lint/build/test）
+- terminal(command) - 执行终端命令
+
+【文件操作】
+- readFile(path) - 读取文件
+- writeFile(path, content) - 写入文件
+- listFiles(dir) - 列出文件
+
+【记忆系统】
+- remember(type, content) - 记住用户偏好或事实。当用户明确说"记住xxx"或表达偏好时使用
+- recall() - 查看已记住的信息
 
 【Git 操作】
-- gitStatus() - 查看工作区状态
-- gitDiff() - 查看代码变更
-- gitLog(count) - 查看提交记录
-- gitBranch() - 查看当前分支
-- gitNewBranch(name) - 创建新分支
-- gitAdd(files) - 添加文件到暂存区
-- gitCommit(message) - 提交代码
-- gitPush() - 推送到远程
+- gitStatus / gitDiff / gitLog / gitBranch / gitNewBranch / gitAdd / gitCommit / gitPush
 
 【自动修复流程】：
-提交代码前，先运行 terminal("npm run lint") 检查。
-如果有 lint 错误，根据错误信息修改代码，再次检查，直到通过后再提交。
+提交前先 terminal("npm run lint")，有错误就修改后重试。
 
-【绝对规则】：
-- 所有工具返回的数据都是真实的，禁止编造
-- 提交前必须先 lint 检查
-- commit message 必须用中文，格式为 "feat: xxx" / "fix: xxx" / "chore: xxx"
-- 每次提交前先 gitStatus + gitDiff 检查变更`,
+【规则】：
+- 禁止编造数据
+- 用户表达偏好时，主动用 remember 工具记住${memory}`,
             messages: modelMessages,
             tools,
             stopWhen: stepCountIs(5),
