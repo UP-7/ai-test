@@ -8,6 +8,7 @@ import { terminalTool } from "@/lib/tools/terminal";
 import { fileTools } from "@/lib/tools/file";
 import { memoryTools } from "@/lib/tools/memory";
 import { memoryContext } from "@/lib/memory";
+import { agentTools } from "@/lib/tools/agents";
 
 // ========== LLM 配置 ==========
 
@@ -27,6 +28,7 @@ const tools: Record<string, any> = {
     search: searchTool,
     terminal: terminalTool,
     ...memoryTools,
+    ...agentTools,
     ...fileTools,
     ...gitTools,
 };
@@ -72,12 +74,16 @@ export const POST = async (req: Request) => {
 【自动修复流程】：
 提交前先 terminal("npm run lint")，有错误就修改后重试。
 
+【并行规则】：
+- 当多个操作互相独立时（如同时审查多个文件），一次性发出所有工具调用
+- AI SDK 会自动并行执行它们
+
 【规则】：
 - 禁止编造数据
 - 用户表达偏好时，主动用 remember 工具记住${memory}`,
             messages: modelMessages,
             tools,
-            stopWhen: stepCountIs(5),
+            stopWhen: stepCountIs(8),
         });
 
         const uiStream = toUIMessageStream({
