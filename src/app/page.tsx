@@ -8,11 +8,13 @@ export default function HomePage() {
     const [input, setInput] = useState(''); //输入框的值
     const messagesEndRef = useRef<HTMLDivElement>(null); //获取消息结束的ref
     //useChat 内部封装了流式响应 默认会向/api/chat 发送请求
-    const { messages, sendMessage } = useChat({
+    const { messages, sendMessage, status, stop } = useChat({
         onFinish: () => {
             setInput('');
         }
     })
+
+    const isLoading = status === 'submitted' || status === 'streaming';
 
     // 自动滚动到底部
     useEffect(() => {
@@ -148,17 +150,26 @@ export default function HomePage() {
                             className='min-h-[52px] resize-none rounded-xl border-gray-200 focus:border-blue-400 focus:ring-blue-400'
                             rows={1}
                         />
-                        <Button
-                            onClick={() => {
-                                if (input.trim()) {
-                                    sendMessage({ text: input });
-                                }
-                            }}
-                            disabled={!input.trim()}
-                            className='bg-linear-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white rounded-xl px-6'
-                        >
-                            发送
-                        </Button>
+                        {isLoading ? (
+                            <Button
+                                onClick={() => stop()}
+                                className='bg-red-500 hover:bg-red-600 text-white rounded-xl px-6'
+                            >
+                                ⏹ 停止
+                            </Button>
+                        ) : (
+                            <Button
+                                onClick={() => {
+                                    if (input.trim()) {
+                                        sendMessage({ text: input });
+                                    }
+                                }}
+                                disabled={!input.trim()}
+                                className='bg-linear-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white rounded-xl px-6'
+                            >
+                                发送
+                            </Button>
+                        )}
                     </div>
                 </div>
             </div>
