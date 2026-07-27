@@ -1,6 +1,7 @@
 import { tool } from "ai";
 import { z } from "zod";
 import { codeReviewAgent, commitMessageAgent, bugFixAgent } from "@/lib/agents";
+import { runWorkReporterAgent } from "@/lib/agents/work-reporter";
 import fs from "fs";
 import path from "path";
 import { execSync } from "child_process";
@@ -71,8 +72,23 @@ export const bugFixTool: any = tool({
 });
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const workReportTool: any = tool({
+    description: "调用 Work Reporter Agent 智能分析 Git 分支变更，生成深度工作总结报告。当用户说'@work-reporter'、'总结工作'、'生成工作报告'、'分析分支'时触发。Agent 会自主收集 Git 信息、分析代码、生成报告并保存。",
+    parameters: z.object({
+        request: z.string().describe("用户的具体请求，如'总结当前分支'、'分析 feature/login 分支'、'重新生成报告'"),
+    }),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    execute: async (input: any) => {
+        const request = input.request || "总结当前分支的工作";
+        const result = await runWorkReporterAgent(request);
+        return result;
+    },
+});
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const agentTools: Record<string, any> = {
     codeReview: codeReviewTool,
     commitMsg: commitMsgTool,
     bugFix: bugFixTool,
+    workReport: workReportTool,
 };

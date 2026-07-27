@@ -117,6 +117,9 @@ export const POST = async (req: Request) => {
 【Git 操作】
 - gitStatus / gitDiff / gitLog / gitBranch / gitNewBranch / gitAdd / gitCommit / gitPush
 
+【Agent 模式】
+- workReport(request) - @work-reporter 智能工作总结 Agent。当用户说"@work-reporter"、"总结工作"、"生成报告"、"分析分支"时调用。Agent 会自主收集 Git 信息、分析代码、生成深度报告并保存。
+
 【自动修复流程】：
 提交前先 terminal("npm run lint")，有错误就修改后重试。
 

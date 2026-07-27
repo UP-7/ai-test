@@ -21,6 +21,7 @@ const TOOL_NAME_MAP: Record<string, string> = {
     codeReview: '代码审查',
     commitMsg: '生成提交信息',
     bugFix: '自动修复',
+    workReport: '📝 工作总结 Agent',
     gitStatus: 'Git 状态',
     gitDiff: '查看变更',
     gitLog: '提交记录',
