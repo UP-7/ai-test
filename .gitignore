@@ -39,3 +39,22 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# CodeBuddy IDE 相关（agents / skills / 运行时产物，仅本地使用）
+.codebuddy/
+
+# guizang-ppt-skill（本地 clone 的外部 skill，不进项目仓库）
+guizang-ppt-skill/
+
+# 个人工作产物（简历、工作总结、需求知识库等）
+resume-draft.md
+resume.docx
+work-reports/
+.requirement-knowledge.md
+
+# Agent 运行时长期记忆
+.agent-memory.json
+
+# SQLite 数据库（用户、会话、消息）
+/data/
+

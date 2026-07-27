@@ -1,4 +1,11 @@
-import { streamText, toUIMessageStream, createUIMessageStreamResponse, convertToModelMessages, stepCountIs } from "ai";
+import {
+    streamText,
+    toUIMessageStream,
+    createUIMessageStreamResponse,
+    convertToModelMessages,
+    stepCountIs,
+    type UIMessage,
+} from "ai";
 import { createOpenAI } from "@ai-sdk/openai";
 import { getWeatherTool } from "@/lib/tools/weather";
 import { caculatorTool } from "@/lib/tools/caculator";
@@ -6,9 +13,11 @@ import { searchTool } from "@/lib/tools/search";
 import { gitTools } from "@/lib/tools/git";
 import { terminalTool } from "@/lib/tools/terminal";
 import { fileTools } from "@/lib/tools/file";
-import { memoryTools } from "@/lib/tools/memory";
+import { createMemoryTools } from "@/lib/tools/memory";
 import { memoryContext } from "@/lib/memory";
 import { agentTools } from "@/lib/tools/agents";
+import { sessionsRepo, messagesRepo } from "@/lib/db";
+import { getCurrentUser } from "@/lib/auth";
 
 // ========== LLM 配置 ==========
 
@@ -21,32 +30,69 @@ const MODEL = process.env.LLM_MODEL ?? "deepseek-v4-pro";
 
 // ========== 工具集 ==========
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const tools: Record<string, any> = {
+/** 为当前登录用户构造工具集（memory 类工具需要按用户隔离） */
+const buildTools = (userId: string) => ({
     getWeather: getWeatherTool,
     caculator: caculatorTool,
     search: searchTool,
     terminal: terminalTool,
-    ...memoryTools,
+    ...createMemoryTools(userId),
     ...agentTools,
     ...fileTools,
     ...gitTools,
-};
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+}) as Record<string, any>;
 
 // ========== API Route ==========
 
 export const POST = async (req: Request) => {
     try {
-        const { messages } = await req.json();
+        const user = await getCurrentUser();
+        if (!user) return new Response("Unauthorized", { status: 401 });
 
-        if (!messages || !Array.isArray(messages)) {
-            return new Response("Invalid request: messages is required", { status: 400 });
+        const tools = buildTools(user.id);
+
+        const body = await req.json();
+        const { sessionId, message } = body as {
+            sessionId?: string;
+            message?: UIMessage;
+        };
+
+        if (!sessionId || !message) {
+            return new Response("Invalid request: sessionId and message are required", {
+                status: 400,
+            });
         }
 
-        const modelMessages = await convertToModelMessages(messages);
+        // 校验 session 归属
+        const session = sessionsRepo.get(sessionId, user.id);
+        if (!session) {
+            return new Response("Session not found", { status: 404 });
+        }
 
-        // 注入长期记忆
-        const memory = memoryContext();
+        // 读历史 + 追加新消息
+        const history = messagesRepo.listBySession(sessionId);
+        const allMessages: UIMessage[] = [...history, message];
+
+        // 立即持久化用户消息
+        messagesRepo.upsert(sessionId, message);
+
+        // 若 session 还是"新对话"，用首条 user 消息生成标题
+        if (session.title === '新对话' && message.role === 'user') {
+            const firstText = message.parts?.find(
+                (p) => (p as { type: string }).type === 'text'
+            ) as { text?: string } | undefined;
+            const text = firstText?.text?.trim();
+            if (text) {
+                const title = text.length > 20 ? `${text.slice(0, 20)}…` : text;
+                sessionsRepo.updateTitle(sessionId, user.id, title);
+            }
+        } else {
+            sessionsRepo.touch(sessionId);
+        }
+
+        const modelMessages = await convertToModelMessages(allMessages);
+        const memory = memoryContext(user.id);
 
         const result = streamText({
             model: deepseek.chat(MODEL),
@@ -88,8 +134,28 @@ export const POST = async (req: Request) => {
 
         const uiStream = toUIMessageStream({
             stream: result.stream,
-            originalMessages: messages,
+            originalMessages: allMessages,
             tools,
+            // 显式给 assistant 消息生成 id，避免 responseMessage.id 为空
+            // 导致所有 assistant 行都用 id="" 主键覆盖同一行。
+            generateMessageId: () =>
+                (globalThis.crypto?.randomUUID?.() ??
+                    `${Date.now()}_${Math.random().toString(36).slice(2, 10)}`),
+            onFinish: ({ responseMessage }) => {
+                // 只落一条助手消息（含 tool-call/tool-result parts）
+                if (responseMessage) {
+                    messagesRepo.upsert(sessionId, responseMessage as UIMessage);
+                }
+                sessionsRepo.touch(sessionId);
+            },
+        });
+
+        // 关键：即使客户端断连（切账号 / 关标签 / 切会话）也让模型层的 stream
+        // 在后端继续跑完，确保 toUIMessageStream 的 onFinish 一定触发，助手消息落库不丢。
+        result.consumeStream({
+            onError: (err) => {
+                console.error('consumeStream error:', err);
+            },
         });
 
         return createUIMessageStreamResponse({ stream: uiStream });
